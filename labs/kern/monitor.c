@@ -61,36 +61,36 @@ mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
 	const uint32_t max_frame_size = 12; // ebp, eip, args
 
-	uint32_t counter = 0x38; //TODO: do it better
+	uint32_t counter = 0;
 	
-	uint32_t esp_start = *(uint32_t*)read_esp_offset(counter);
-	assert(esp_start & KERNBASE);
+	uint32_t ebp_start = read_ebp_offset(counter);
+	assert(ebp_start & KERNBASE);
 	
-	uint32_t espv = 0;
-	while (espv != EBP_DEFAULT)
+	uint32_t ebpv = 0;
+	while (ebpv != EBP_DEFAULT)
 	{
 		int frame_size = 0;
-		while (frame_size < max_frame_size) //Reading until another esp in stack
+		while (frame_size < max_frame_size) //Reading until another ebp in stack
 		{
-			espv = *(uint32_t*)read_esp_offset(counter);
+			ebpv = read_ebp_offset(counter);
 			
 			//found EOS
-			if (espv == EBP_DEFAULT) break;
+			if (ebpv == EBP_DEFAULT) break;
 			
 			//found another frame
-			if ((espv & KERNBASE) && (espv > esp_start) && (espv - esp_start <= max_frame_size * 4))
+			if ((ebpv & KERNBASE) && (ebpv > ebp_start) && (ebpv - ebp_start <= max_frame_size * 4))
 			{
-				esp_start = espv;
+				ebp_start = ebpv;
 				break;
 			}
 
 			counter += 4;
 			switch(frame_size)
 			{
-				case 0: cprintf("  ebp: %08x", espv); break;
-				case 1: cprintf(", eip: %08x, args:", espv); break;
+				case 0: cprintf("  ebp: %08x", ebpv); break;
+				case 1: cprintf(", eip: %08x, args:", ebpv); break;
 				default:
-					cprintf(" %08x,", espv);
+					cprintf(" %08x,", ebpv);
 			}
 			++frame_size;
 		}
