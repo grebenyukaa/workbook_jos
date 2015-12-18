@@ -54,10 +54,10 @@ _start:
 	movw	%ax,%ss				# -> SS: Stack Segment
 	ljmp	$CODE_SEL,$relocated		# reload CS by jumping
 relocated:
-
 	# We are gonna make first call soon.
 	# Maybe it is time to put NULL to some register before making the first call?
 	# Set the stack pointer
+	movl	$EBP_DEFAULT, %ebp
 	movl	$(bootstacktop),%esp
 
 	# now to C code
