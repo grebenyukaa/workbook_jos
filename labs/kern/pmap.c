@@ -121,8 +121,10 @@ boot_alloc(uint32_t n, uint32_t align)
 	//	Step 2: save current value of boot_freemem as allocated chunk
 	//	Step 3: increase boot_freemem to record allocation
 	//	Step 4: return allocated chunk
-
-	return NULL;
+	ROUNDUP(boot_freemem, align);
+	v = boot_freemem;
+	*boot_freemem += (char)(n * sizeof(uint32_t));
+	return v;
 }
 
 // Set up a two-level page table:
@@ -145,7 +147,7 @@ i386_vm_init(void)
 	size_t n;
 
 	// Delete this line:
-	panic("i386_vm_init: This function is not finished\n");
+	//panic("i386_vm_init: This function is not finished\n");
 
 	//////////////////////////////////////////////////////////////////////
 	// create initial page directory.
