@@ -44,7 +44,8 @@ i386_init(void)
 #else
 	// Touch all you want.
 	ENV_CREATE(user_hello);
-	cprintf("env_create\n");
+	//ENV_CREATE(user_buggyhello);
+	//ENV_CREATE(user_evilhello);
 #endif // TEST*
 
 

@@ -187,8 +187,8 @@ page_fault_handler(struct Trapframe *tf)
 	fault_va = rcr2();
 
 	// Handle kernel-mode page faults.
-	
-	// LAB 3: Your code here.
+	if (!(tf->tf_cs | PTE_U))
+		panic("Kernel mode pagefault!\n");
 
 	// We've already handled kernel-mode exceptions, so if we get here,
 	// the page fault happened in user mode.
