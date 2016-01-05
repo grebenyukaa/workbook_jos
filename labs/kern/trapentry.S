@@ -22,7 +22,7 @@
 	pushl $(num);							\
 	jmp _alltraps
 
-/* Use TRAPHANDLER_NOEC for traps where the CPU doesn't push an error code.
+/* Use TRAPHANDLER_NOEC for traps where the CPU doesn''t push an error code.
  * It pushes a 0 in place of the error code, so the trap frame has the same
  * format in either case.
  */
@@ -37,13 +37,35 @@
 
 .text
 
-/*
- * Lab 3: Your code here for generating entry points for the different traps.
- */
+# http://www.read.seas.harvard.edu/~kohler/class/aosref/i386/s09_10.htm
+TRAPHANDLER_NOEC(i_divide_hnd, 0)
+TRAPHANDLER_NOEC(i_debug_hnd, 1)
+TRAPHANDLER_NOEC(i_nmi_hnd, 2)
+TRAPHANDLER_NOEC(i_brkpt_hnd, 3)
+TRAPHANDLER_NOEC(i_oflow_hnd, 4)
+TRAPHANDLER_NOEC(i_bound_hnd, 5)
+TRAPHANDLER_NOEC(i_illop_hnd, 6)
+TRAPHANDLER_NOEC(i_device_hnd, 7)
+TRAPHANDLER(i_dblflt_hnd, 8)
+TRAPHANDLER_NOEC(i_tss_hnd, 10)
+TRAPHANDLER(i_segnp_hnd, 11)
+TRAPHANDLER(i_stack_hnd, 12)
+TRAPHANDLER(i_gpflt_hnd, 13)
+TRAPHANDLER(i_pgflt_hnd, 14)
+TRAPHANDLER_NOEC(i_fperr_hnd, 16)
+TRAPHANDLER_NOEC(i_align_hnd, 17)
+TRAPHANDLER_NOEC(i_mchk_hnd, 18)
+TRAPHANDLER_NOEC(i_simderr_hnd, 19)
+TRAPHANDLER_NOEC(i_syscall_hnd, 48)
+TRAPHANDLER_NOEC(i_default_hnd, 500)
 
-
-
-/*
- * Lab 3: Your code here for _alltraps
- */
-	
+_alltraps:
+	pushl %ds
+	pushl %es
+	pushal
+	movw $GD_KD,%ax
+	movw %ax,%es
+	movw %ax,%ds
+	pushl %esp
+	movl $0,%ebp
+	call trap

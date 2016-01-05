@@ -115,7 +115,7 @@ env_setup_vm(struct Env *e)
 	p->pp_ref = 1;
 
 	pde_t* pde = page2kva(p);
-	memset(pde, 0, PGSIZE);
+	memset(pde, 0, PDX(UTOP) * sizeof(pde_t));
 	memmove(pde + PDX(UTOP), boot_pgdir + PDX(UTOP), (NPDENTRIES - PDX(UTOP)) * sizeof(pde_t));
 
 	e->env_pgdir = pde;

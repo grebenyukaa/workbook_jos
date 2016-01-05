@@ -58,7 +58,26 @@ idt_init(void)
 {
 	extern struct Segdesc gdt[];
 	
-	// LAB 3: Your code here.
+	SETGATE(idt[0], 0, GD_KT, i_divide_hnd, 0)
+	SETGATE(idt[1], 0, GD_KT, i_debug_hnd, 0)
+	SETGATE(idt[2], 0, GD_KT, i_nmi_hnd, 0)
+	SETGATE(idt[3], 0, GD_KT, i_brkpt_hnd, 0)
+	SETGATE(idt[4], 0, GD_KT, i_oflow_hnd, 0)
+	SETGATE(idt[5], 0, GD_KT, i_bound_hnd, 0)
+	SETGATE(idt[6], 0, GD_KT, i_illop_hnd, 0)
+	SETGATE(idt[7], 0, GD_KT, i_device_hnd, 0)
+	SETGATE(idt[8], 0, GD_KT, i_dblflt_hnd, 0)
+	SETGATE(idt[10], 0, GD_KT, i_tss_hnd, 0)
+	SETGATE(idt[11], 0, GD_KT, i_segnp_hnd, 0)
+	SETGATE(idt[12], 0, GD_KT, i_stack_hnd, 0)
+	SETGATE(idt[13], 0, GD_KT, i_gpflt_hnd, 0)
+	SETGATE(idt[14], 0, GD_KT, i_pgflt_hnd, 0)
+	SETGATE(idt[16], 0, GD_KT, i_fperr_hnd, 0)
+	SETGATE(idt[17], 0, GD_KT, i_align_hnd, 0)
+	SETGATE(idt[18], 0, GD_KT, i_mchk_hnd, 0)
+	SETGATE(idt[19], 0, GD_KT, i_simderr_hnd, 0)
+	SETGATE(idt[48], 0, GD_KT, i_syscall_hnd, 3)
+	//SETGATE(idt[500], 0, GD_KT, i_default_hnd, 0)
 
 	// Setup a TSS so that we get the right stack
 	// when we trap to the kernel.
@@ -110,8 +129,19 @@ static void
 trap_dispatch(struct Trapframe *tf)
 {
 	// Handle processor exceptions.
-	// LAB 3: Your code here.
-	
+	switch (tf->tf_trapno)
+	{
+		case T_PGFLT:
+		{
+			page_fault_handler(tf);
+			return;
+		}
+		case T_SYSCALL:
+		{
+			tf->tf_regs.reg_eax = syscall(tf->tf_regs.reg_eax, tf->tf_regs.reg_edx, tf->tf_regs.reg_ecx, tf->tf_regs.reg_ebx, tf->tf_regs.reg_edi, tf->tf_regs.reg_esi);
+			return;
+		}
+	}
 
 	// Unexpected trap: The user process or the kernel has a bug.
 	print_trapframe(tf);
