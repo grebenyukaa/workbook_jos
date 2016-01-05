@@ -148,6 +148,7 @@ i386_vm_init(void)
 	size_t n;
 
 	uint32_t pages_sz;
+	uint32_t env_sz;
 
 	// Delete this line:
 	//panic("i386_vm_init: This function is not finished\n");
@@ -186,7 +187,9 @@ i386_vm_init(void)
 
 	//////////////////////////////////////////////////////////////////////
 	// Make 'envs' point to an array of size 'NENV' of 'struct Env'.
-	// LAB 3: Your code here.
+	env_sz = NENV * sizeof(struct Env);
+	envs = boot_alloc(env_sz, PGSIZE);
+	memset(envs, 0, env_sz);
 
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
@@ -208,8 +211,7 @@ i386_vm_init(void)
 	//    - the new image at UPAGES -- kernel R, user R
 	//      (ie. perm = PTE_U | PTE_P)
 	//    - pages itself -- kernel RW, user NONE
-	// Your code goes here:
-	boot_map_segment(pgdir, UPAGES, sizeof(struct Page) * npage, PADDR(pages), PTE_W);
+	boot_map_segment(pgdir, UPAGES, pages_sz, PADDR(pages), PTE_U);
 
 	//////////////////////////////////////////////////////////////////////
 	// Map the 'envs' array read-only by the user at linear address UENVS
@@ -217,7 +219,7 @@ i386_vm_init(void)
 	// Permissions:
 	//    - the new image at UENVS  -- kernel R, user R
 	//    - envs itself -- kernel RW, user NONE
-	// LAB 3: Your code here.
+	boot_map_segment(pgdir, UENVS, env_sz, PADDR(envs), PTE_U);
 
 	//////////////////////////////////////////////////////////////////////
         // Use the physical memory that bootstack refers to as
