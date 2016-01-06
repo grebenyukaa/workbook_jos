@@ -4,6 +4,7 @@
 #include <kern/pmap.h>
 #include <kern/monitor.h>
 
+static int last_env_id = 1;
 
 // Choose a user environment to run and run it.
 void
@@ -18,7 +19,31 @@ sched_yield(void)
 	// But never choose envs[0], the idle environment,
 	// unless NOTHING else is runnable.
 
-	// LAB 4: Your code here.
+	for (int i = 0; i < 2; ++i)
+	{
+		int from, to;
+		if (!i)
+		{
+			from = last_env_id;
+			to = NENV;
+		}
+		else
+		{
+			from = 1;
+			to = last_env_id;
+		}
+
+		for (int env_id = from; env_id < to; ++env_id)
+		{
+			if (envs[env_id].env_status == ENV_RUNNABLE)
+			{
+				last_env_id = env_id + 1;
+				if (last_env_id >= NENV)
+					last_env_id = 1;
+				env_run(&envs[env_id]);
+			}
+		}
+	}
 
 	// Run the special idle environment when nothing else is runnable.
 	if (envs[0].env_status == ENV_RUNNABLE)

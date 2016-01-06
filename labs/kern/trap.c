@@ -208,7 +208,7 @@ page_fault_handler(struct Trapframe *tf)
 	fault_va = rcr2();
 
 	// Handle kernel-mode page faults.
-	if (!(tf->tf_cs | PTE_U))
+	if (!(tf->tf_cs & 3))
 		panic("Kernel mode pagefault!\n");
 
 	// We've already handled kernel-mode exceptions, so if we get here,
