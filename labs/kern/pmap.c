@@ -750,28 +750,25 @@ static uintptr_t user_mem_check_addr;
 int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
-	
-	uintptr_t old_addr = user_mem_check_addr;
-	user_mem_check_addr = (uintptr_t)va;
+	if ((uint32_t)va >= ULIM) return -E_FAULT;
 
-	if ((uint32_t)va > ULIM) return -E_FAULT;
-
-	user_mem_check_addr = ROUNDDOWN(user_mem_check_addr, PGSIZE);
-	size_t len_ = ROUNDUP(len, PGSIZE);
-	for (int i = 0; i < len_; i += PGSIZE)
+	for (uint32_t addr = (uint32_t)va; addr < (uint32_t)va + len; addr += PGSIZE)
 	{
-		void* cur = (void*)user_mem_check_addr + i;
+		pte_t* pte = NULL;
+		page_lookup(env->env_pgdir, (void*)addr, &pte);
 
-		pte_t* pte;
-		page_lookup(env->env_pgdir, cur, &pte);
+		if (!pte)
+		{
+			user_mem_check_addr = addr;
+			return -E_FAULT;
+		}
 
 		if (!(*pte & (perm | PTE_P)))
 		{
-			user_mem_check_addr = (uintptr_t)cur;
+			user_mem_check_addr = addr;
 			return -E_FAULT;
 		}
 	}
-	user_mem_check_addr = old_addr;
 	return 0;
 }
 
@@ -786,8 +783,7 @@ void
 user_mem_assert(struct Env *env, const void *va, size_t len, int perm)
 {
 	if (user_mem_check(env, va, len, perm | PTE_U) < 0) {
-		cprintf("[%08x] user_mem_check assertion failure for "
-			"va %08x\n", env->env_id, user_mem_check_addr);
+		cprintf("[%08x] user_mem_check assertion failure for va %08x\n", env->env_id, user_mem_check_addr);
 		env_destroy(env);	// may not return
 	}
 }

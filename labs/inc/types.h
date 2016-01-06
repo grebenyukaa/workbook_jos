@@ -69,4 +69,14 @@ typedef int32_t off_t;
 // Return the offset of 'member' relative to the beginning of a struct type
 #define offsetof(type, member)  ((size_t) (&((type*)0)->member))
 
+#define CHECK_FAIL(x)\
+{\
+	int errno = (x);\
+	if (errno)\
+	{\
+		cprintf("[%s:%s] %e", __FILE__, __LINE__, errno);\
+		return errno;\
+	}\
+}
+
 #endif /* !JOS_INC_TYPES_H */

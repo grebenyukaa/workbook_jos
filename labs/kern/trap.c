@@ -2,6 +2,8 @@
 #include <inc/x86.h>
 #include <inc/assert.h>
 
+#include <inc/string.h>
+
 #include <kern/pmap.h>
 #include <kern/trap.h>
 #include <kern/console.h>
@@ -198,7 +200,6 @@ trap(struct Trapframe *tf)
 		sched_yield();
 }
 
-
 void
 page_fault_handler(struct Trapframe *tf)
 {
@@ -211,6 +212,7 @@ page_fault_handler(struct Trapframe *tf)
 	if (!(tf->tf_cs & 3))
 		panic("Kernel mode pagefault!\n");
 
+	cprintf("[%08x] user fault va %08x ip %08x\n", curenv->env_id, fault_va, tf->tf_eip);
 	// We've already handled kernel-mode exceptions, so if we get here,
 	// the page fault happened in user mode.
 
@@ -239,12 +241,49 @@ page_fault_handler(struct Trapframe *tf)
 	//   To change what the user environment runs, modify 'curenv->env_tf'
 	//   (the 'tf' variable points at 'curenv->env_tf').
 
-	// LAB 4: Your code here.
+	if (curenv->env_pgfault_upcall)
+	{
+		cprintf("[page_fault_handler] upcall set\n");
+		void* uxstack_top;
+		if (tf->tf_esp > UXSTACKTOP - PGSIZE && tf->tf_esp < UXSTACKTOP - 1)
+		{
+			cprintf("[page_fault_handler] nested\n");
+			uxstack_top = (void*)tf->tf_esp - sizeof(uint32_t);
+		}
+		else
+		{
+			cprintf("[page_fault_handler] first\n");
+			uxstack_top = (void*)UXSTACKTOP;
+		}
+		uxstack_top -= sizeof(struct UTrapframe);
 
-	// Destroy the environment that caused the fault.
-	cprintf("[%08x] user fault va %08x ip %08x\n",
-		curenv->env_id, fault_va, tf->tf_eip);
+		if ((uint32_t)uxstack_top > UXSTACKTOP - PGSIZE)
+		{
+			cprintf("[page_fault_handler] no stack overflow\n");
+			user_mem_assert(curenv, uxstack_top, sizeof(struct UTrapframe) + sizeof(uint32_t), PTE_W);
+
+			struct UTrapframe utf;
+			memset(&utf, 0, sizeof(struct UTrapframe));
+			utf.utf_fault_va = fault_va;
+			utf.utf_regs = tf->tf_regs;
+			utf.utf_eip = tf->tf_eip;
+			utf.utf_eflags = tf->tf_eflags;
+			utf.utf_esp = tf->tf_esp;
+
+			memmove(uxstack_top, &utf, sizeof(struct UTrapframe));
+			cprintf("[page_fault_handler] memmove\n");
+			tf->tf_esp = (uint32_t)uxstack_top;
+			tf->tf_eip = (uint32_t)curenv->env_pgfault_upcall;
+
+			cprintf("[page_fault_handler] run\n");
+			env_run(curenv);
+		}
+		else
+		{
+			cprintf("[page_fault_handler] stack overflow\n");
+		}
+	}
+
 	print_trapframe(tf);
 	env_destroy(curenv);
 }
-

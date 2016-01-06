@@ -12,16 +12,6 @@
 #include <kern/console.h>
 #include <kern/sched.h>
 
-#define CHECK_FAIL(x)\
-	{\
-		int errno = (x);\
-		if (errno)\
-		{\
-			cprintf("[%s:%s] %e", __FILE__, __LINE__, errno);\
-			return errno;\
-		}\
-	}
-
 // Print a string to the system console.
 // The string is exactly 'len' characters long.
 // Destroys the environment on memory errors.
@@ -30,7 +20,6 @@ sys_cputs(const char *s, size_t len)
 {
 	// Check that the user has permission to read memory [s, s+len).
 	// Destroy the environment if not.
-	
 	user_mem_assert(curenv, s, len, 0);
 
 	// Print the string supplied by the user.
@@ -408,8 +397,10 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		case SYS_page_alloc: return sys_page_alloc((envid_t)a1, (void*)a2, (int)a3);
 		case SYS_page_map: return sys_page_map((envid_t)a1, (void*)a2, (envid_t)a3, (void*)a4, (int)a5);
 		case SYS_page_unmap: return sys_page_unmap((envid_t)a1, (void*)a2);
+		case SYS_env_set_pgfault_upcall: return sys_env_set_pgfault_upcall((envid_t)a1, (void*)a2);
 		default:
 		{
+			cprintf("syscall #%d\n", syscallno);
 			assert(0 && "[syscall dispatcher] not implemented!");
 			return -E_INVAL;
 		}
