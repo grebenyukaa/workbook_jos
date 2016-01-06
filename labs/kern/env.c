@@ -227,6 +227,8 @@ segment_alloc(struct Env *e, void *va, size_t len)
 		errno = page_insert(e->env_pgdir, p, va_ + i, PTE_U | PTE_W);
 		if (errno) panic("Page insert fail: %e", errno);
 	}
+
+	
 }
 
 //

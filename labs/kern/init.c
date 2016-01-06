@@ -50,9 +50,9 @@ i386_init(void)
 	ENV_CREATE2(TEST, TESTSIZE)
 #else
 	// Touch all you want.
-	ENV_CREATE(user_yield);
-	ENV_CREATE(user_yield);
-	ENV_CREATE(user_yield);
+	ENV_CREATE(user_dumbfork);
+	ENV_CREATE(user_dumbfork);
+	ENV_CREATE(user_hello);
 #endif // TEST*
 
 	// Schedule and run the first user environment!
