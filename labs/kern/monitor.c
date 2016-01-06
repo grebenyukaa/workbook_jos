@@ -14,7 +14,6 @@
 
 #define CMDBUF_SIZE	80	// enough for one VGA text line
 
-
 struct Command {
 	const char *name;
 	const char *desc;
@@ -25,6 +24,7 @@ struct Command {
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
+	{ "backtrace", "Display stack backtrace", mon_backtrace }
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
@@ -60,10 +60,45 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf)
 int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
-	// Your code here.
+	const uint32_t max_frame_size = 12; // ebp, eip, args
+
+	uint32_t counter = 0;
+	
+	uint32_t ebp_start = read_ebp_offset(counter);
+	assert(ebp_start & KERNBASE);
+	
+	uint32_t ebpv = 0;
+	while (ebpv != EBP_DEFAULT)
+	{
+		int frame_size = 0;
+		while (frame_size < max_frame_size) //Reading until another ebp in stack
+		{
+			ebpv = read_ebp_offset(counter);
+			
+			//found EOS
+			if (ebpv == EBP_DEFAULT) break;
+			
+			//found another frame
+			if ((ebpv & KERNBASE) && (ebpv > ebp_start) && (ebpv - ebp_start <= max_frame_size * 4))
+			{
+				ebp_start = ebpv;
+				break;
+			}
+
+			counter += 4;
+			switch(frame_size)
+			{
+				case 0: cprintf("  ebp: %08x", ebpv); break;
+				case 1: cprintf(", eip: %08x, args:", ebpv); break;
+				default:
+					cprintf(" %08x,", ebpv);
+			}
+			++frame_size;
+		}
+		cprintf("\n");
+	}
 	return 0;
 }
-
 
 
 /***** Kernel monitor command interpreter *****/

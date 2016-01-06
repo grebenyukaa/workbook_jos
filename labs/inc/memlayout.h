@@ -7,6 +7,8 @@
 #include <inc/mmu.h>
 #endif /* not __ASSEMBLER__ */
 
+#define EBP_DEFAULT 0xDEADBEEF
+
 /*
  * This file contains definitions for memory management in our OS,
  * which are relevant to both the kernel and user-mode software.

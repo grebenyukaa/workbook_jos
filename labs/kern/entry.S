@@ -55,10 +55,8 @@ _start:
     movw    %ax,%ss                # -> SS: Stack Segment
     ljmp    $CODE_SEL,$relocated   # reload CS by jumping
 relocated:
-
 	# We are gonna make first call soon.
 	# Maybe it is time to put NULL to some register before making the first call?
-
     # Leave a few words on the stack for the user trap frame
     movl    $(bootstacktop-SIZEOF_STRUCT_TRAPFRAME),%esp
 
