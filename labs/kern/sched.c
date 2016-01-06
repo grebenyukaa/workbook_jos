@@ -4,7 +4,7 @@
 #include <kern/pmap.h>
 #include <kern/monitor.h>
 
-static int last_env_id = 1;
+static envid_t last_env_id = 1;
 
 // Choose a user environment to run and run it.
 void
@@ -21,7 +21,7 @@ sched_yield(void)
 
 	for (int i = 0; i < 2; ++i)
 	{
-		int from, to;
+		envid_t from, to;
 		if (!i)
 		{
 			from = last_env_id;
@@ -33,7 +33,7 @@ sched_yield(void)
 			to = last_env_id;
 		}
 
-		for (int env_id = from; env_id < to; ++env_id)
+		for (envid_t env_id = from; env_id < to; ++env_id)
 		{
 			if (envs[env_id].env_status == ENV_RUNNABLE)
 			{
