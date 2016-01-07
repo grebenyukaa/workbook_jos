@@ -200,6 +200,7 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 
 	struct Page* p;
 	CHECK_FAIL(page_alloc(&p));
+	memset(p, 0, sizeof(struct Page));
 
 	int errno = page_insert(e->env_pgdir, p, va, perm);
 	if (errno)
