@@ -125,8 +125,8 @@ fork(void)
 			{
 				for (int pti = 0; pti < NPTENTRIES; ++pti)
 				{
-					int pn = pdi * NPTENTRIES + pti;
-					if (pn == PPN(UXSTACKTOP - PGSIZE))
+					int pn = pdi * NPDENTRIES + pti;
+					if (pn == VPN(UXSTACKTOP - PGSIZE))
 						continue;
 
 					if (vpt[pn] & PTE_P && vpt[pn] & PTE_U)
