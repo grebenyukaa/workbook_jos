@@ -65,26 +65,30 @@ idt_init(void)
 {
 	extern struct Segdesc gdt[];
 	
-	SETGATE(idt[0], 0, GD_KT, i_divide_hnd, 0)
-	SETGATE(idt[1], 0, GD_KT, i_debug_hnd, 0)
-	SETGATE(idt[2], 0, GD_KT, i_nmi_hnd, 0)
-	SETGATE(idt[3], 0, GD_KT, i_brkpt_hnd, 3)
-	SETGATE(idt[4], 0, GD_KT, i_oflow_hnd, 0)
-	SETGATE(idt[5], 0, GD_KT, i_bound_hnd, 0)
-	SETGATE(idt[6], 0, GD_KT, i_illop_hnd, 0)
-	SETGATE(idt[7], 0, GD_KT, i_device_hnd, 0)
-	SETGATE(idt[8], 0, GD_KT, i_dblflt_hnd, 0)
-	SETGATE(idt[10], 0, GD_KT, i_tss_hnd, 0)
-	SETGATE(idt[11], 0, GD_KT, i_segnp_hnd, 0)
-	SETGATE(idt[12], 0, GD_KT, i_stack_hnd, 0)
-	SETGATE(idt[13], 0, GD_KT, i_gpflt_hnd, 0)
-	SETGATE(idt[14], 0, GD_KT, i_pgflt_hnd, 0)
-	SETGATE(idt[16], 0, GD_KT, i_fperr_hnd, 0)
-	SETGATE(idt[17], 0, GD_KT, i_align_hnd, 0)
-	SETGATE(idt[18], 0, GD_KT, i_mchk_hnd, 0)
-	SETGATE(idt[19], 0, GD_KT, i_simderr_hnd, 0)
-	SETGATE(idt[48], 0, GD_KT, i_syscall_hnd, 3)
-	//SETGATE(idt[500], 0, GD_KT, i_default_hnd, 0)
+	SETGATE(idt[T_DIVIDE], 0, GD_KT, i_divide_hnd, 0);
+	SETGATE(idt[T_DEBUG], 0, GD_KT, i_debug_hnd, 0);
+	SETGATE(idt[T_NMI], 0, GD_KT, i_nmi_hnd, 0);
+	SETGATE(idt[T_BRKPT], 0, GD_KT, i_brkpt_hnd, 3);
+	SETGATE(idt[T_OFLOW], 0, GD_KT, i_oflow_hnd, 0);
+	SETGATE(idt[T_BOUND], 0, GD_KT, i_bound_hnd, 0);
+	SETGATE(idt[T_ILLOP], 0, GD_KT, i_illop_hnd, 0);
+	SETGATE(idt[T_DEVICE], 0, GD_KT, i_device_hnd, 0);
+	SETGATE(idt[T_DBLFLT], 0, GD_KT, i_dblflt_hnd, 0);
+	SETGATE(idt[T_TSS], 0, GD_KT, i_tss_hnd, 0);
+	SETGATE(idt[T_SEGNP], 0, GD_KT, i_segnp_hnd, 0);
+	SETGATE(idt[T_STACK], 0, GD_KT, i_stack_hnd, 0);
+	SETGATE(idt[T_GPFLT], 0, GD_KT, i_gpflt_hnd, 0);
+	SETGATE(idt[T_PGFLT], 0, GD_KT, i_pgflt_hnd, 0);
+	SETGATE(idt[T_FPERR], 0, GD_KT, i_fperr_hnd, 0);
+	SETGATE(idt[T_ALIGN], 0, GD_KT, i_align_hnd, 0);
+	SETGATE(idt[T_MCHK], 0, GD_KT, i_mchk_hnd, 0);
+	SETGATE(idt[T_SIMDERR], 0, GD_KT, i_simderr_hnd, 0);
+	SETGATE(idt[T_SYSCALL], 0, GD_KT, i_syscall_hnd, 3)
+
+	SETGATE(idt[IRQ_OFFSET + IRQ_TIMER], 0, GD_KT, i_irq_tmr, 3);
+	SETGATE(idt[IRQ_OFFSET + IRQ_KBD], 0, GD_KT, i_irq_kbd, 3);
+	SETGATE(idt[IRQ_OFFSET + IRQ_SPURIOUS], 0, GD_KT, i_irq_spr, 3);
+	SETGATE(idt[IRQ_OFFSET + IRQ_IDE], 0, GD_KT, i_irq_ide, 3)
 
 	// Setup a TSS so that we get the right stack
 	// when we trap to the kernel.
@@ -139,14 +143,18 @@ trap_dispatch(struct Trapframe *tf)
 	switch (tf->tf_trapno)
 	{
 		// Handle clock interrupts.
-		// LAB 4: Your code here.
+		case IRQ_OFFSET + IRQ_TIMER:
+		{
+			//cprintf("[trap_dispatch] timer interrupt\n");
+			sched_yield();
+		}
 
 		// Handle spurious interupts
 		// The hardware sometimes raises these because of noise on the
 		// IRQ line or other reasons. We don't care.
 		case IRQ_OFFSET + IRQ_SPURIOUS: 
 		{
-			cprintf("Spurious interrupt on irq 7\n");
+			cprintf("[trap_dispatch] spurious interrupt on irq 7\n");
 			print_trapframe(tf);
 			return;
 		}
@@ -165,7 +173,7 @@ trap_dispatch(struct Trapframe *tf)
 			// Unexpected trap: The user process or the kernel has a bug.
 			print_trapframe(tf);
 			if (tf->tf_cs == GD_KT)
-				panic("unhandled trap in kernel");
+				panic("[trap_dispatch] unhandled trap in kernel");
 			else {
 				env_destroy(curenv);
 				return;

@@ -39,4 +39,8 @@ void i_simderr_hnd(void);
 void i_syscall_hnd(void);
 void i_default_hnd(void);
 
+void i_irq_tmr(void);
+void i_irq_kbd(void);
+void i_irq_spr(void);
+void i_irq_ide(void);
 #endif /* JOS_KERN_TRAP_H */
