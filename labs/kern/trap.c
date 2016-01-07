@@ -212,7 +212,7 @@ page_fault_handler(struct Trapframe *tf)
 	if (!(tf->tf_cs & 3))
 		panic("Kernel mode pagefault!\n");
 
-	cprintf("[%08x] user fault va %08x ip %08x\n", curenv->env_id, fault_va, tf->tf_eip);
+	//cprintf("[page_fault_handler] envid %08x user fault va %08x ip %08x\n", curenv->env_id, fault_va, tf->tf_eip);
 	// We've already handled kernel-mode exceptions, so if we get here,
 	// the page fault happened in user mode.
 
@@ -243,23 +243,23 @@ page_fault_handler(struct Trapframe *tf)
 
 	if (curenv->env_pgfault_upcall)
 	{
-		cprintf("[page_fault_handler] upcall set\n");
+		//cprintf("[page_fault_handler] upcall set\n");
 		void* uxstack_top;
 		if (tf->tf_esp > UXSTACKTOP - PGSIZE && tf->tf_esp < UXSTACKTOP - 1)
 		{
-			cprintf("[page_fault_handler] nested\n");
+			//cprintf("[page_fault_handler] nested\n");
 			uxstack_top = (void*)tf->tf_esp - sizeof(uint32_t);
 		}
 		else
 		{
-			cprintf("[page_fault_handler] first\n");
+			//cprintf("[page_fault_handler] first\n");
 			uxstack_top = (void*)UXSTACKTOP;
 		}
 		uxstack_top -= sizeof(struct UTrapframe);
 
 		if ((uint32_t)uxstack_top > UXSTACKTOP - PGSIZE)
 		{
-			cprintf("[page_fault_handler] no stack overflow\n");
+			//cprintf("[page_fault_handler] no stack overflow\n");
 			user_mem_assert(curenv, uxstack_top, sizeof(struct UTrapframe) + sizeof(uint32_t), PTE_W);
 
 			struct UTrapframe utf;
@@ -269,13 +269,14 @@ page_fault_handler(struct Trapframe *tf)
 			utf.utf_eip = tf->tf_eip;
 			utf.utf_eflags = tf->tf_eflags;
 			utf.utf_esp = tf->tf_esp;
+			utf.utf_err = tf->tf_err;
 
 			memmove(uxstack_top, &utf, sizeof(struct UTrapframe));
-			cprintf("[page_fault_handler] memmove\n");
+			//cprintf("[page_fault_handler] memmove\n");
 			tf->tf_esp = (uint32_t)uxstack_top;
 			tf->tf_eip = (uint32_t)curenv->env_pgfault_upcall;
 
-			cprintf("[page_fault_handler] run\n");
+			//cprintf("[page_fault_handler] run\n");
 			env_run(curenv);
 		}
 		else
@@ -284,7 +285,7 @@ page_fault_handler(struct Trapframe *tf)
 		}
 	}
 
-	cprintf("[page_fault_handler] unhandled user pagefault\n");
-	print_trapframe(tf);
+	cprintf("[%08x page_fault_handler] unhandled user pagefault\n", curenv->env_id);
+	//print_trapframe(tf);
 	env_destroy(curenv);
 }

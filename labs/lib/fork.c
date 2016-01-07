@@ -23,7 +23,9 @@
 static void
 pgfault(struct UTrapframe *utf)
 {
-	cprintf("[fork - pgfault]\n");
+	envid_t envid = sys_getenvid();
+	//cprintf("[%08x fork - pgfault]\n", envid);
+
 	void *addr = (void *)utf->utf_fault_va;
 	uint32_t err = utf->utf_err;
 
@@ -32,10 +34,11 @@ pgfault(struct UTrapframe *utf)
 	// Hint:
 	//   Use the read-only page table mappings at vpt
 	//   (see <inc/memlayout.h>).
-	int pn = PPN(addr);
-	int perm = vpt[pn] & PTE_USER;
-	if (!(err & FEC_WR && perm & PTE_COW))
-		panic("[fork - pgfault] not writing or or not writing to COW page\n");
+	int perm = vpt[VPN(addr)] & PTE_USER;
+	if (!(err & FEC_WR))
+		panic("[%08x fork - pgfault] not writing: err = %08x\n", envid, err);
+	if (!(perm & PTE_COW))
+		panic("[%08x fork - pgfault] writing not to COW\n", envid);
 
 	// Allocate a new page, map it at a temporary location (PFTEMP),
 	// copy the data from the old page to the new page, then move the new
@@ -43,14 +46,15 @@ pgfault(struct UTrapframe *utf)
 	// Hint:
 	//   You should make three system calls.
 	//   No need to explicitly delete the old page's mapping.
-	physaddr_t paddr = PTE_ADDR(addr);
-	perm &= ~PTE_W;
-	perm |= PTE_COW;
+	
+	perm &= ~PTE_COW;
+	perm |= PTE_W;
 
+	addr = ROUNDDOWN(addr, PGSIZE);
 	CHECK_FAIL_FORK(sys_page_alloc(0, (void*)PFTEMP, perm));
-	memmove((void*)PFTEMP, (void*)paddr, PGSIZE);
+	memmove((void*)PFTEMP, addr, PGSIZE);
 
-	CHECK_FAIL_FORK(sys_page_map(0, (void*)PFTEMP, 0, (void*)paddr, perm));
+	CHECK_FAIL_FORK(sys_page_map(0, (void*)PFTEMP, 0, addr, perm));
 	CHECK_FAIL_FORK(sys_page_unmap(0, (void*)PFTEMP));
 }
 
@@ -75,7 +79,8 @@ duppage(envid_t envid, unsigned pn)
 	{
 		perm &= ~PTE_W;
 		perm |= PTE_COW;
-		CHECK_FAIL_FORK(sys_page_map(0, va, 0, va, perm));
+		CHECK_FAIL_FORK(sys_page_map(0, va, envid, va, perm));
+		return sys_page_map(0, va, 0, va, perm);
 	}
 	return sys_page_map(0, va, envid, va, perm);
 }
@@ -99,42 +104,43 @@ duppage(envid_t envid, unsigned pn)
 envid_t
 fork(void)
 {
-	extern unsigned char end[];
-
-	set_pgfault_handler(NULL);
 	set_pgfault_handler(pgfault);
 
 	envid_t envid = sys_exofork();
 	if (envid < 0)
 		panic("[fork] sys_exofork: %e", envid);
+	
 	if (envid == 0)
 	{
 		envid_t cenvid = sys_getenvid();
-		cprintf("[fork] child! envid = %d\n", cenvid);
+		cprintf("[%08x fork : child]\n", cenvid);
 		env = &envs[ENVX(cenvid)];
-		return 0;
 	}
-
-	cprintf("[fork] parent! envid = %d\n", envid);
-	for (int pdi = 0; pdi < VPD(end); ++pdi)
+	else
 	{
-		if (vpd[pdi] & PTE_P & PTE_U)
+		cprintf("[%08x fork : parent]\n", envid);
+		for (int pdi = 0; pdi < VPD(UTOP); ++pdi)
 		{
-			for (int pti = 0; pti < NPTENTRIES; ++pti)
+			if (vpd[pdi] & PTE_P && vpd[pdi] & PTE_U)
 			{
-				int pn = pdi * NPDENTRIES + pti;
-				if (pn == PPN(UXSTACKTOP - PGSIZE))
-					continue;
-
-				if (vpt[pti] & PTE_P & PTE_U)
+				for (int pti = 0; pti < NPTENTRIES; ++pti)
 				{
-					CHECK_FAIL_FORK(duppage(envid, pn));
+					int pn = pdi * NPTENTRIES + pti;
+					if (pn == PPN(UXSTACKTOP - PGSIZE))
+						continue;
+
+					if (vpt[pn] & PTE_P && vpt[pn] & PTE_U)
+					{
+						CHECK_FAIL_FORK(duppage(envid, pn));
+					}
 				}
 			}
 		}
-	}
+		CHECK_FAIL_FORK(sys_page_alloc(envid, (void*)(UXSTACKTOP - PGSIZE), PTE_P|PTE_U|PTE_W));
+		CHECK_FAIL_FORK(sys_env_set_pgfault_upcall(envid, env->env_pgfault_upcall));
 
-	CHECK_FAIL_FORK(sys_env_set_status(envid, ENV_RUNNABLE));
+		CHECK_FAIL_FORK(sys_env_set_status(envid, ENV_RUNNABLE));
+	}
 	return envid;
 }
 

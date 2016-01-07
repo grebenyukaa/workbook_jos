@@ -629,6 +629,7 @@ page_insert(pde_t *pgdir, struct Page *pp, void *va, int perm)
 		{
 			//pp->pp_ref++;
 			*pte = paddr | perm | PTE_P;
+			tlb_invalidate(pgdir, va);
 			return 0;
 		}
 		page_remove(pgdir, va);

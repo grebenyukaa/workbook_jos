@@ -249,6 +249,7 @@ sys_page_map(envid_t srcenvid, void *srcva, envid_t dstenvid, void *dstva, int p
 
 	if (!(perm & PTE_P && perm & PTE_U) || perm & ~PTE_USER)
 	{
+		cprintf("pte_user: %08x perm: %08x\n", PTE_USER, perm);
 		assert(0 && "[sys_page_map] bad perm");
 		return -E_INVAL;
 	}
@@ -261,9 +262,8 @@ sys_page_map(envid_t srcenvid, void *srcva, envid_t dstenvid, void *dstva, int p
 		return -E_INVAL;
 	}
 
-	if ((*src_pte ^ perm) & PTE_W)
+	if (perm & PTE_W && !(*src_pte & PTE_W))
 	{
-		cprintf("%08x %d %d %d %d\n", *src_pte, perm, PTE_W, *src_pte ^ perm, *src_pte ^ perm ^ PTE_W);
 		assert(0 && "[sys_page_map] R/W mismatch");
 		return -E_INVAL;
 	}
