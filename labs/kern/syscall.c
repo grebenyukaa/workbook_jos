@@ -331,31 +331,52 @@ sys_page_unmap(envid_t envid, void *va)
 static int
 sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 {
-	struct Env* e;
-	CHECK_FAIL(envid2env(envid, &e, 1));
+	//cprintf("[%08x sys_ipc_try_send] envid %08x val %08x srcva %08x perm %08x\n", sys_getenvid(), envid, value, srcva, perm);
+	struct Env* dste;
+	CHECK_FAIL(envid2env(envid, &dste, 0));
 
-	if (!e->env_ipc_recving)
+	envid_t src_envid = sys_getenvid();
+	struct Env* srce;
+	CHECK_FAIL(envid2env(src_envid, &srce, 0));
+
+	if (!dste->env_ipc_recving)
 	{
-		assert(0 && "[sys_ipc_try_send] not recving");
+		cprintf("[%08x sys_ipc_try_send] not recving\n", sys_getenvid());
 		return -E_IPC_NOT_RECV;
 	}
 
-	pte_t* src_pte;
-	struct Page* srcp = page_lookup(e->env_pgdir, srcva, &src_pte);
-	if ((*src_pte ^ perm) & PTE_W)
-	{
-		assert(0 && "[sys_page_map] R/W mismatch");
-		return -E_INVAL;
-	}
+	dste->env_ipc_from = src_envid;
+	dste->env_ipc_perm = 0;
+	dste->env_ipc_value = value;
 
 	if ((uint32_t)srcva < UTOP)
 	{
+		//cprintf("[%08x sys_ipc_try_send] sending page\n", sys_getenvid());
 		if ((uint32_t)srcva % PGSIZE != 0)
 			return -E_INVAL;
 		if (!(perm & PTE_P && perm & PTE_U) || perm & ~PTE_USER)
 			return -E_INVAL;
+
+		pte_t* src_pte;
+		struct Page* srcp = page_lookup(srce->env_pgdir, srcva, &src_pte);
+		if (!srcp)
+		{
+			assert(0 && "[sys_ipc_try_send] bad va\n");
+			return -E_INVAL;
+		}
+
+		if (perm & PTE_W && !(*src_pte & PTE_W))
+		{
+			assert(0 && "[sys_ipc_try_send] R/W mismatch\n");
+			return -E_INVAL;
+		}
+
+		CHECK_FAIL(sys_page_map(src_envid, srcva, envid, dste->env_ipc_dstva, perm));
+		dste->env_ipc_perm = perm;
 	}
 
+	dste->env_status = ENV_RUNNABLE;
+	dste->env_ipc_recving = 0;
 	return 0;
 }
 
@@ -373,8 +394,27 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 static int
 sys_ipc_recv(void *dstva)
 {
-	// LAB 4: Your code here.
-	panic("sys_ipc_recv not implemented");
+	//cprintf("[%08x sys_ipc_recv]\n", sys_getenvid());
+	struct Env* e;
+	CHECK_FAIL(envid2env(0, &e, 0));
+
+	e->env_ipc_recving = 1;
+	e->env_status = ENV_NOT_RUNNABLE;
+
+	if ((uint32_t)dstva < UTOP)
+	{
+		//cprintf("[%08x sys_ipc_recv] recving page\n", sys_getenvid());
+		if ((uint32_t)dstva % PGSIZE != 0)
+		{
+			assert("[sys_ipc_recv] va misalign");
+			return -E_INVAL;
+		}
+
+		CHECK_FAIL(sys_page_map(0, dstva, e->env_ipc_from, e->env_ipc_dstva, e->env_ipc_perm));
+	}
+
+	e->env_tf.tf_regs.reg_eax = 0;
+	sched_yield();
 	return 0;
 }
 
@@ -399,6 +439,8 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		case SYS_page_map: return sys_page_map((envid_t)a1, (void*)a2, (envid_t)a3, (void*)a4, (int)a5);
 		case SYS_page_unmap: return sys_page_unmap((envid_t)a1, (void*)a2);
 		case SYS_env_set_pgfault_upcall: return sys_env_set_pgfault_upcall((envid_t)a1, (void*)a2);
+		case SYS_ipc_try_send: return sys_ipc_try_send((envid_t)a1, (uint32_t)a2, (void*)a3, (unsigned)a4);
+		case SYS_ipc_recv: return sys_ipc_recv((void*)a1);
 		default:
 		{
 			cprintf("syscall #%d\n", syscallno);
