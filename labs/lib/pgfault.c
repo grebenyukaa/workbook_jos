@@ -22,9 +22,8 @@ void (*_pgfault_handler)(struct UTrapframe *utf);
 void
 set_pgfault_handler(void (*handler)(struct UTrapframe *utf))
 {
-	int r;
-
-	if (_pgfault_handler == 0) {
+	if (_pgfault_handler == 0)
+    {
 		// First time through!
         envid_t envid = sys_getenvid();
 

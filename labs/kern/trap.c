@@ -284,6 +284,7 @@ page_fault_handler(struct Trapframe *tf)
 		}
 	}
 
+	cprintf("[page_fault_handler] unhandled user pagefault\n");
 	print_trapframe(tf);
 	env_destroy(curenv);
 }
